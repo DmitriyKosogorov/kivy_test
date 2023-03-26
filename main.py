@@ -34,6 +34,8 @@
 # ma=MainApp()
 # ma.run()
 
+
+
 from kivy.app import App
 from kivy.uix.button import Button
 from kivy.uix.widget import Widget
@@ -42,6 +44,7 @@ from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 from kivy.uix.relativelayout import RelativeLayout
+import numpy as np
 
 import cv2
 import cv2.aruco as aruco
@@ -52,12 +55,19 @@ def overlay_image(src_img,  # оригинальное изображение
                   dst_img,  # целевое изображение
                   dst_pts  # координаты маркеров на целевом изображении
                   ):
+    x = src_img.shape[0] - 1
+    y = src_img.shape[1] - 1
+    src_pts = np.float32(src_pts)
+
+    dst_pts = np.float32(dst_pts)
+    print(dst_pts)
+
     orig_h = src_img.shape[0]
     orig_w = src_img.shape[1]
 
     # выравнивание исходного изображения
-    ort_pts = [[0, 0], [0, orig_w - 1], [orig_h - 1, 0], [orig_h - 1, orig_w - 1]]
-    print(src_img.type())
+    ort_pts = np.float32([[0, 0], [0, orig_w - 1], [orig_h - 1, 0], [orig_h - 1, orig_w - 1]])
+    #print(src_pts.type)
     ort_matrix = cv2.getPerspectiveTransform(src_pts, ort_pts)
     ort = cv2.warpPerspective(src_img, ort_matrix, (orig_h, orig_w))
 
@@ -142,17 +152,29 @@ class CamApp(App):
         #=====================================
 
         if(self.camera_status=="overlay"):
-            if len(self.corners.keys()) == 4:
-                self.corners=dict(sorted(self.corners.items()))
+            if len(self.corners) == 4:
+
                 current_corners={}
                 if ids is not None:
-                    print('detected: {}'.format(len(ids)))
                     for i, corner in zip(ids, corners):
-                        current_corners[i[0]] = corner
+                          current_corners[i[0]]=corner
                     current_corners=dict(sorted(current_corners.items()))
-                    print()
-                    if len(current_corners.keys()) == 4:
-                        frame=overlay_image(self.photo, self.corners.values(),frame,current_corners.values())
+
+                    if len(current_corners) == 4:
+                        first=[]
+                        second=[]
+
+                        for key in self.corners.keys():
+                            print(key)
+                            first.append(self.corners[key])
+                            # for corner in self.corners[key][0]:
+                            #     first.append([corner[0],corner[1]])
+
+                        for key in current_corners.keys():
+                            print(key)
+                            second.append(current_corners[key])
+                        print(first)
+                        frame = overlay_image(self.photo, first[0],frame,second[0])
             else:
                 print(len(self.corners.keys()))
 
@@ -173,22 +195,23 @@ class CamApp(App):
 
         # cv2.imshow('frame',frame)
         corners, ids, rejectedImgPoints = aruco.detectMarkers(im, self.ARUCO_DICT, parameters=self.ARUCO_PARAMETERS)
-        self.corners={}
+
         if (self.camera_status == 'mask'):
 
             if ids is not None:
                 print('detected: {}'.format(len(ids)))
                 for i, corner in zip(ids, corners):
                     #print(i)
-                    self.corners[i[0]]=corner
+
                     print('ID: {}; Corners: {}'.format(i, corner))
-                    self
+                    self.corners[i[0]]=corner
                     # print(sum(corner[0, 0, :]) // 4, sum(corner[0, :, 0]) // 4)
                     cv2.circle(frame, center=(int(sum(corner[0, :, 0]) // 4), int(sum(corner[0, :, 1]) // 4)), radius=5,
                                color=(255, 0, 0), thickness=10)
 
                 im = aruco.drawDetectedMarkers(frame, corners, borderColor=(0, 0, 255))
         self.photo=frame
+        self.corners = dict(sorted(self.corners.items()))
 
     def cancel_pressed(self,event):
         self.camera_status='going'
