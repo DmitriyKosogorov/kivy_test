@@ -79,6 +79,7 @@ class CamApp(App):
 
         ret, frame = self.capture.read()
         #=====================================
+        #test test
 
         im = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
